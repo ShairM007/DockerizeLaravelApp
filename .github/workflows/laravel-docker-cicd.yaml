@@ -60,8 +60,8 @@ jobs:
             sudo docker rm $(sudo docker ps -aq)
             sudo docker rmi $( sudo docker images -q)
             sudo docker pull 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${SHORT_SHA}
-            sudo docker run -d -p 3000:3000 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${SHORT_SHA}
-            sudo ufw allow 3000
+            sudo docker run -d -p 9000:9000 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${SHORT_SHA}
+            sudo ufw allow 9000
             sudo systemctl stop nginx
             sudo systemctl restart nginx
 
