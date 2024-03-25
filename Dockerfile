@@ -21,13 +21,14 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 WORKDIR /var/www/html
 
 # Copy only the composer files first
-COPY composer.json composer.lock /var/www/html/
+# COPY composer.json composer.lock /var/www/html/
+COPY . /var/www/html
 
 # Install dependencies using Composer
 RUN composer install --no-scripts --no-autoloader
 
 # Copy the application files
-COPY . /var/www/html
+#COPY . /var/www/html
 
 # Set Composer to allow superuser
 ENV COMPOSER_ALLOW_SUPERUSER=1
