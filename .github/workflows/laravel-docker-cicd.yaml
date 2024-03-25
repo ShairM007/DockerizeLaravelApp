@@ -1,0 +1,97 @@
+name: Upload Docker image to ECR and Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+      - qa
+      - staging
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: ${{secrets.ENVIRONMENT }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Login to AWS ECRs
+        run: |
+          aws ecr get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin 730335588229.dkr.ecr.us-east-1.amazonaws.com
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Build Docker images
+        run: |
+          COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
+          sudo docker build -t my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${COMMIT_HASH} .
+
+      - name: Tag Docker image
+        run: |
+          COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
+          sudo docker tag my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${COMMIT_HASH} 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${COMMIT_HASH}
+
+      - name: Push Docker image to ECR
+        run: |
+          COMMIT_HASH=$(echo ${GITHUB_SHA} | cut -c1-8)
+          sudo docker push 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${COMMIT_HASH}
+
+      - name: Deploy Docker image to EC2 instance 
+        if: github.ref == 'refs/heads/main'
+        uses: appleboy/ssh-action@master
+        env:
+          FOO: "BAR"
+          BAR: "FOO"
+          SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.EC2_HOST }} # EC2 instance public IP or DNS name
+          username: ${{ secrets.EC2_USERNAME }} # SSH username for EC2 instance
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # SSH private key for accessing EC2 instance
+          port: ${{ secrets.SSH_PORT }}
+          envs: FOO,BAR,SHA
+          script: |
+            SHORT_SHA=`echo $SHA | cut -c1-8`
+            sudo docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) 730335588229.dkr.ecr.us-east-1.amazonaws.com
+            sudo docker stop $(sudo docker ps -q)
+            sudo docker rm $(sudo docker ps -aq)
+            sudo docker rmi $( sudo docker images -q)
+            sudo docker pull 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${SHORT_SHA}
+            sudo docker run -d -p 3000:3000 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${SHORT_SHA}
+            sudo ufw allow 3000
+            sudo systemctl stop nginx
+            sudo systemctl restart nginx
+
+
+       # For Stagging Environment 
+
+
+
+      - name: Deploy Docker image to stagging EC2 instance 
+        if: github.ref == 'refs/heads/staging'
+        uses: appleboy/ssh-action@master
+        env:
+          FOO: "BAR"
+          BAR: "FOO"
+          SHA: ${{ github.sha }}
+        with:
+          host: ${{ secrets.STAGGING_HOST }} # EC2 instance public IP or DNS name
+          username: ${{ secrets.STAGGING_USERNAME }} # SSH username for EC2 instance
+          key: ${{ secrets.STAGGING_SSH_PRIVATE_KEY }} # SSH private key for accessing EC2 instance
+          port: ${{ secrets.STAGGING_PORT }}
+          envs: FOO,BAR,SHA
+          script: |
+            SHORT_SHA=`echo $SHA | cut -c1-8`
+            sudo docker login -u AWS -p $(aws ecr get-login-password --region us-east-1) 730335588229.dkr.ecr.us-east-1.amazonaws.com
+            sudo docker stop $(sudo docker ps -q)
+            sudo docker rm $(sudo docker ps -aq)
+            sudo docker rmi $( sudo docker images -q)
+            sudo docker pull 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${SHORT_SHA}
+            sudo docker run -d -p 3001:3001 730335588229.dkr.ecr.us-east-1.amazonaws.com/my-app:${{env.ENVIRONMENT}}-${{ github.run_number }}-${SHORT_SHA}
+            sudo ufw allow 3001
+            sudo systemctl stop nginx
+            sudo systemctl restart nginx
+

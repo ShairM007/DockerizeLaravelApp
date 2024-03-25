@@ -1,0 +1,17 @@
+# Files and directories to ignore when building Docker images for Laravel
+
+# Laravel specific
+/node_modules
+/public/storage
+/storage/*.key
+/vendor
+.env
+.phpunit.result.cache
+composer.lock
+npm-debug.log
+
+# Docker specific
+.dockerignore
+.docker
+.git
+.gitignore
