@@ -5,9 +5,7 @@
 /public/storage
 /storage/*.key
 /vendor
-.env
 .phpunit.result.cache
-composer.lock
 npm-debug.log
 
 # Docker specific
